@@ -56,7 +56,7 @@ func main() {
 	if err != nil {
 		log.Println("启动计划任务失败：", err)
 		return
-	}else {
+	} else {
 		log.Println("已启动计划任务")
 	}
 	c.Start()
@@ -81,6 +81,12 @@ func readConf(filename string) error {
 }
 
 func update() {
+	err := readConf(*confPath)
+	if err != nil {
+		log.Println("更新配置文件失败：", err)
+		return
+	}
+
 	baseurl := conf.IkuaiURL
 	if baseurl == "" {
 		gateway, err := router.GetGateway()
@@ -94,7 +100,7 @@ func update() {
 
 	iKuai := api.NewIKuai(baseurl)
 
-	err := iKuai.Login(conf.Username, conf.Password)
+	err = iKuai.Login(conf.Username, conf.Password)
 	if err != nil {
 		log.Println("登陆失败：", err)
 		return

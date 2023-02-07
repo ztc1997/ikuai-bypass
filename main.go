@@ -59,6 +59,7 @@ func main() {
 	}else {
 		log.Println("已启动计划任务")
 	}
+	c.Start()
 
 	{
 		osSignals := make(chan os.Signal, 1)

@@ -91,17 +91,22 @@ func (i *IKuai) DelCustomIsp(id string) error {
 }
 
 func (i *IKuai) DelIKuaiBypassCustomIsp() (err error) {
-	data, err := i.ShowCustomIspByComment()
-	if err != nil {
-		return
-	}
-	var ids []string
-	for _, d := range data {
-		if d.Comment == COMMENT_IKUAI_BYPASS {
-			ids = append(ids, strconv.Itoa(d.ID))
+	for {
+		var data []CustomIspData
+		data, err = i.ShowCustomIspByComment()
+		var ids []string
+		for _, d := range data {
+			if d.Comment == COMMENT_IKUAI_BYPASS {
+				ids = append(ids, strconv.Itoa(d.ID))
+			}
+		}
+		if len(ids) <= 0 {
+			return
+		}
+		id := strings.Join(ids, ",")
+		err = i.DelCustomIsp(id)
+		if err != nil {
+			return
 		}
 	}
-	id := strings.Join(ids, ",")
-	err = i.DelCustomIsp(id)
-	return
 }

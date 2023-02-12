@@ -106,17 +106,25 @@ func (i *IKuai) DelStreamDomain(id string) error {
 }
 
 func (i *IKuai) DelIKuaiBypassStreamDomain() (err error) {
-	data, err := i.ShowStreamDomainByComment(COMMENT_IKUAI_BYPASS)
-	if err != nil {
-		return
-	}
-	var ids []string
-	for _, d := range data {
-		if d.Comment == COMMENT_IKUAI_BYPASS {
-			ids = append(ids, strconv.Itoa(d.ID))
+	for {
+		var data []StreamDomainData
+		data, err = i.ShowStreamDomainByComment(COMMENT_IKUAI_BYPASS)
+		if err != nil {
+			return
+		}
+		var ids []string
+		for _, d := range data {
+			if d.Comment == COMMENT_IKUAI_BYPASS {
+				ids = append(ids, strconv.Itoa(d.ID))
+			}
+		}
+		if len(ids) <= 0 {
+			return
+		}
+		id := strings.Join(ids, ",")
+		err = i.DelStreamDomain(id)
+		if err != nil {
+			return
 		}
 	}
-	id := strings.Join(ids, ",")
-	err = i.DelStreamDomain(id)
-	return
 }

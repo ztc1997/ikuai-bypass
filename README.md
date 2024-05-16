@@ -25,6 +25,12 @@ custom-isp:     # 自定义运营商
     url: https://cdn.jsdelivr.net/gh/Loyalsoldier/geoip@release/text/cn.txt
   - name: Telegram
     url: https://cdn.jsdelivr.net/gh/Loyalsoldier/geoip@release/text/telegram.txt
+ip-group:     # IP分组
+  - name: 国内  # IP分组名称，分为多个时在名称后面拼接“序号”，如“国内_1”
+    ## IP分组 cidr 列表网址，每行一个，超过1000行会自动分为多个，ipv6 地址会被删除
+    url: https://cdn.jsdelivr.net/gh/Loyalsoldier/geoip@release/text/cn.txt
+  - name: Telegram
+    url: https://cdn.jsdelivr.net/gh/Loyalsoldier/geoip@release/text/telegram.txt
 stream-domain:      # 域名分流
   - interface: wan2 # 分流线路
     src-addr: 192.168.1.100-192.168.1.250   # 分流的源地址
@@ -33,4 +39,14 @@ stream-domain:      # 域名分流
   - interface: wan2
     src-addr: 192.168.1.100-192.168.1.250
     url: https://cdn.jsdelivr.net/gh/Loyalsoldier/v2ray-rules-dat@release/greatfire.txt
+stream-ipport:      # 端口分流，与IP分组组合使用
+  - type: 0 # 分流方式：0-外网线路，1-下一跳网关
+    interface: wan2 # 分流线路
+    src-addr: 192.168.1.100-192.168.1.250   # 分流的源地址
+    ## 域名列表网址，每行一个，超过1000行会自动分为多个
+    ip-group: 国内 # 前面填写的IP分组名称，多个用逗号隔开
+  - type: 1 # 分流方式：0-外网线路，1-下一跳网关
+    nexthop: 192.168.1.2 # 下一跳网关
+    src-addr: 192.168.1.100-192.168.1.250
+    ip-group: Telegram
 ```

@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"strings"
 	"syscall"
 
@@ -29,11 +30,22 @@ var conf struct {
 		Name string `yaml:"name"`
 		URL  string `yaml:"url"`
 	} `yaml:"custom-isp"`
+	IpGroup []struct {
+		Name string `yaml:"name"`
+		URL  string `yaml:"url"`
+	} `yaml:"ip-group"`
 	StreamDomain []struct {
 		Interface string `yaml:"interface"`
 		SrcAddr   string `yaml:"src-addr"`
 		URL       string `yaml:"url"`
 	} `yaml:"stream-domain"`
+	StreamIpPort []struct {
+		Type      string `yaml:"type"`
+		Interface string `yaml:"interface"`
+		Nexthop   string `yaml:"nexthop"`
+		SrcAddr   string `yaml:"src-addr"`
+		IpGroup   string `yaml:"ip-group"`
+	} `yaml:"stream-ipport"`
 }
 
 func main() {
@@ -123,6 +135,21 @@ func update() {
 		}
 	}
 
+	err = iKuai.DelIKuaiBypassIpGroup()
+	if err != nil {
+		log.Println("移除旧的IP分组失败：", err)
+	} else {
+		log.Println("移除旧的IP分组成功")
+	}
+	for _, ipGroup := range conf.IpGroup {
+		err = updateIpGroup(iKuai, ipGroup.Name, ipGroup.URL)
+		if err != nil {
+			log.Printf("添加IP分组'%s@%s'失败：%s\n", ipGroup.Name, ipGroup.URL, err)
+		} else {
+			log.Printf("添加IP分组'%s@%s'成功\n", ipGroup.Name, ipGroup.URL)
+		}
+	}
+
 	err = iKuai.DelIKuaiBypassStreamDomain()
 	if err != nil {
 		log.Println("移除旧的域名分流失败：", err)
@@ -135,6 +162,21 @@ func update() {
 			log.Printf("添加域名分流 '%s@%s' 失败：%s\n", streamDomain.Interface, streamDomain.URL, err)
 		} else {
 			log.Printf("添加域名分流 '%s@%s' 成功\n", streamDomain.Interface, streamDomain.URL)
+		}
+	}
+
+	err = iKuai.DelIKuaiBypassStreamIpPort()
+	if err != nil {
+		log.Println("移除旧的端口分流失败：", err)
+	} else {
+		log.Println("移除旧的端口分流成功")
+	}
+	for _, streamIpPort := range conf.StreamIpPort {
+		err = updateStreamIpPort(iKuai, streamIpPort.Type, streamIpPort.Interface, streamIpPort.Nexthop, streamIpPort.SrcAddr, streamIpPort.IpGroup)
+		if err != nil {
+			log.Printf("添加端口分流 '%s@%s' 失败：%s\n", streamIpPort.Interface+streamIpPort.Nexthop, streamIpPort.IpGroup, err)
+		} else {
+			log.Printf("添加端口分流 '%s@%s' 成功\n", streamIpPort.Interface+streamIpPort.Nexthop, streamIpPort.IpGroup)
 		}
 	}
 }
@@ -162,6 +204,29 @@ func updateCustomIsp(iKuai *api.IKuai, name, url string) (err error) {
 	return
 }
 
+func updateIpGroup(iKuai *api.IKuai, name, url string) (err error) {
+	resp, err := http.Get(url)
+	if err != nil {
+		return
+	}
+	if resp.StatusCode != 200 {
+		err = errors.New(resp.Status)
+	}
+	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return
+	}
+	ips := strings.Split(string(body), "\n")
+	ips = removeIpv6(ips)
+	ipGroups := group(ips, 1000)
+	for index, ig := range ipGroups {
+		ipGroup := strings.Join(ig, ",")
+		iKuai.AddIpGroup(name+"_"+strconv.Itoa(index), ipGroup)
+	}
+	return
+}
+
 func updateStreamDomain(iKuai *api.IKuai, iface, srcAddr, url string) (err error) {
 	resp, err := http.Get(url)
 	if err != nil {
@@ -181,6 +246,22 @@ func updateStreamDomain(iKuai *api.IKuai, iface, srcAddr, url string) (err error
 		domain := strings.Join(d, ",")
 		iKuai.AddStreamDomain(iface, srcAddr, domain)
 	}
+	return
+}
+
+func updateStreamIpPort(iKuai *api.IKuai, forwardType string, iface string, nexthop string, srcAddr string, ipGroup string) (err error) {
+
+	var ipGroupList []string
+	for _, ipGroupItem := range strings.Split(ipGroup, ",") {
+		var data []string
+		data, err = iKuai.GetAllIKuaiBypassIpGroupNamesByName(ipGroupItem)
+		if err != nil {
+			return
+		}
+		ipGroupList = append(ipGroupList, data...)
+	}
+
+	iKuai.AddStreamIpPort(forwardType, iface, strings.Join(ipGroupList, ","), srcAddr, nexthop)
 	return
 }
 
